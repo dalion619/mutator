@@ -58,6 +58,10 @@ def _csharp_private(name: str, header: str) -> bool:
     signature = re.split(r"[({=]", header, maxsplit=1)[0]
     if name.endswith(_CSHARP_ACCESSORS):
         return bool(re.search(r"\bprivate\b", signature))
+    if "." in name:
+        # crapper names an explicit interface implementation `IStorage.Load`.
+        # It has no modifier and is reachable through the interface.
+        return False
     return re.search(r"\b(public|protected|internal)\b", signature) is None
 
 

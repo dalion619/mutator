@@ -57,6 +57,10 @@ class Board {
     assert not is_private("csharp", "Family", source, 5, 5)
 
 
+def test_explicit_interface_implementations_are_public():
+    assert not is_private("csharp", "IStorage.Load", "int IStorage.Load(int id) => 1;\n", 1, 1)
+
+
 def test_accessors_are_private_only_when_marked():
     assert not is_private("csharp", "Size.get", "get { return 1; }\n", 1, 1)
     assert is_private("csharp", "Size.set", "private set { }\n", 1, 1)
