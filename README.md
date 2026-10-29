@@ -109,7 +109,7 @@ The baseline command has to pass before any mutant runs. A mutant's timeout is t
 | --- | --- | --- |
 | Clojure | `clj -M:spec --tag ~no-mutate` when Speclj is on the classpath, otherwise `clj -M:test` or `bb spec` | nearest `deps.edn` or `bb.edn` |
 | Java | `mvn -q test -DexcludeTags=no-mutate` | nearest `pom.xml` |
-| C# | `dotnet test --artifacts-path target/dotnet-artifacts --filter Category!=no-mutate`. Each worker builds into its own `target`, so workers never share `bin` or `obj` | nearest `.sln` / `.slnx`, else `.csproj` |
+| C# | `dotnet test --artifacts-path target/dotnet-artifacts --filter "Category!=no-mutate&TestCategory!=no-mutate"`, which skips xUnit/NUnit `[Trait("Category", "no-mutate")]` and MSTest `[TestCategory("no-mutate")]`. Each worker builds into its own `target`, so workers never share `bin` or `obj`, and every project directory is a real directory so a Microsoft.Testing.Platform test app finds its project references | nearest `.sln` / `.slnx`, else `.csproj` |
 | Go | `go test -count=1` of the file's package | nearest `go.mod` |
 | TypeScript | `npm test` | nearest `package.json` |
 | Rust | `cargo test` | nearest `Cargo.toml` |
