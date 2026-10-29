@@ -244,7 +244,9 @@ def _csharp_plan(root: Path, source: Path) -> tuple[Command, Path]:
     """`dotnet test` with build output under the run directory's own target.
 
     A worker links the rest of the tree back to the real project, so the
-    default bin and obj would be shared by every worker at once.
+    default bin and obj would be shared by every worker at once. The filter
+    skips `no-mutate` tests under both xUnit/NUnit (`Category` trait) and
+    MSTest (`[TestCategory]`); each framework ignores the other's property.
     """
 
     directory = _nearest_dotnet(source, root)
@@ -254,7 +256,7 @@ def _csharp_plan(root: Path, source: Path) -> tuple[Command, Path]:
         "--artifacts-path",
         "target/dotnet-artifacts",
         "--filter",
-        "Category!=no-mutate",
+        "Category!=no-mutate&TestCategory!=no-mutate",
     ], directory
 
 

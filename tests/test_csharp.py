@@ -79,6 +79,15 @@ def test_plan_runs_dotnet_test_in_the_nearest_solution_with_private_artifacts(tm
     assert directory == tmp_path.resolve()
 
 
+def test_plan_skips_no_mutate_tests_in_xunit_and_mstest(tmp_path):
+    (tmp_path / "Demo.slnx").write_text("<Solution />", encoding="utf-8")
+    source = tmp_path / "Board.cs"
+    source.write_text("class Board {}", encoding="utf-8")
+    command, _directory = runner.test_plan(tmp_path, source, "csharp", None)
+    # xUnit/NUnit traits are `Category`; MSTest's [TestCategory] is `TestCategory`.
+    assert command[command.index("--filter") + 1] == "Category!=no-mutate&TestCategory!=no-mutate"
+
+
 def test_plan_falls_back_to_the_project(tmp_path):
     project = tmp_path / "Demo"
     project.mkdir()
