@@ -263,6 +263,41 @@ def _copy_importer(worker: Path, root: Path, relative: str) -> None:
     destination.write_bytes((root / relative).read_bytes())
 
 
+# A test project reached through a linked directory builds a deps.json without
+# its project references. VSTest's host still finds them next to the test
+# assembly; a Microsoft.Testing.Platform test app does not, so every test fails
+# and every mutant would count as killed.
+_DOTNET_PROJECTS = (".csproj", ".fsproj", ".vbproj")
+
+
+def dotnet_project_dirs(root: Path) -> set[str]:
+    """Directories, relative to ``root``, that hold a .NET project file."""
+
+    found = set()
+    root = root.resolve()
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [name for name in dirnames if _keep_dir(name)]
+        if any(name.endswith(_DOTNET_PROJECTS) for name in filenames):
+            relative = Path(dirpath).relative_to(root).as_posix()
+            if relative != ".":
+                found.add(relative)
+    return found
+
+
+def _real_directory(worker: Path, root: Path, relative: str) -> None:
+    """Expand every linked directory on ``relative``; its files stay links."""
+
+    real = root
+    current = worker
+    for segment in relative.split("/"):
+        real = real / segment
+        current = current / segment
+        if current.is_symlink():
+            _expand_directory(current, real)
+        elif not current.exists():
+            return
+
+
 def _overlay(worker: Path, root: Path, relative: str, original: bytes) -> None:
     """Real directories along the source path. Every sibling is a link."""
 
@@ -281,6 +316,7 @@ def create_workers(
     created = []
     first = relative.split("/", 1)[0]
     importers = importers_of(root, relative)
+    projects = sorted(dotnet_project_dirs(root)) if relative.endswith(".cs") else []
     for index in range(count):
         worker = base / f"worker-{index}"
         worker.mkdir(parents=True, exist_ok=True)
@@ -289,6 +325,8 @@ def create_workers(
         _overlay(worker, root, relative, original)
         for importer in importers:
             _copy_importer(worker, root, importer)
+        for project in projects:
+            _real_directory(worker, root, project)
         created.append(worker)
     return created
 

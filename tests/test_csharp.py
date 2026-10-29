@@ -3,7 +3,7 @@ from pathlib import Path
 from mutator.functions import is_private
 from mutator import runner
 from mutator.sites import apply_site, discover_raw
-from mutator.workers import SKIP_LINK
+from mutator.workers import SKIP_LINK, create_workers, delete_tree, new_run_dir
 
 SOURCE = """\
 class Board {
@@ -100,3 +100,34 @@ def test_plan_falls_back_to_the_project(tmp_path):
 
 def test_workers_do_not_share_dotnet_build_output():
     assert {"bin", "obj", "TestResults"} <= SKIP_LINK
+
+
+def test_workers_give_every_dotnet_project_a_real_directory(tmp_path):
+    # Through a linked directory a test project's deps.json loses its project
+    # references, and a Microsoft.Testing.Platform test app can't load them.
+    (tmp_path / "Demo.slnx").write_text("<Solution />", encoding="utf-8")
+    source = tmp_path / "src" / "Demo" / "Board.cs"
+    source.parent.mkdir(parents=True)
+    source.write_text("class Board {}", encoding="utf-8")
+    (tmp_path / "src" / "Demo" / "Demo.csproj").write_text("<Project />", encoding="utf-8")
+    shared = tmp_path / "src" / "Shared" / "Shared.csproj"
+    shared.parent.mkdir()
+    shared.write_text("<Project />", encoding="utf-8")
+    tests = tmp_path / "tests" / "Demo.PropertiesTests" / "Demo.PropertiesTests.csproj"
+    tests.parent.mkdir(parents=True)
+    tests.write_text("<Project />", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    original = source.read_bytes()
+
+    base = new_run_dir(tmp_path)
+    try:
+        (worker,) = create_workers(base, tmp_path, "src/Demo/Board.cs", original, 1)
+        for directory in ("tests", "tests/Demo.PropertiesTests", "src/Shared"):
+            assert (worker / directory).is_dir()
+            assert not (worker / directory).is_symlink()
+        assert (worker / "tests/Demo.PropertiesTests/Demo.PropertiesTests.csproj").is_symlink()
+        assert (worker / "src/Shared/Shared.csproj").is_symlink()
+        assert (worker / "docs").is_symlink()
+    finally:
+        delete_tree(base)
+    assert tests.read_text(encoding="utf-8") == "<Project />"
