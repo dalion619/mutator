@@ -222,9 +222,46 @@ def _python_plan(root: Path, source: Path) -> tuple[Command, Path]:
     return _python_command(directory), directory
 
 
+_DOTNET_MARKERS = ("*.sln", "*.slnx", "*.csproj")
+
+
+def _nearest_dotnet(source: Path, root: Path) -> Path:
+    """The nearest solution, else the nearest project, else the root."""
+
+    root = root.resolve()
+    for patterns in (_DOTNET_MARKERS[:2], _DOTNET_MARKERS[2:]):
+        current = source.resolve().parent
+        while True:
+            if any(any(current.glob(pattern)) for pattern in patterns):
+                return current
+            if current == root or current.parent == current:
+                break
+            current = current.parent
+    return root
+
+
+def _csharp_plan(root: Path, source: Path) -> tuple[Command, Path]:
+    """`dotnet test` with build output under the run directory's own target.
+
+    A worker links the rest of the tree back to the real project, so the
+    default bin and obj would be shared by every worker at once.
+    """
+
+    directory = _nearest_dotnet(source, root)
+    return [
+        "dotnet",
+        "test",
+        "--artifacts-path",
+        "target/dotnet-artifacts",
+        "--filter",
+        "Category!=no-mutate",
+    ], directory
+
+
 _PLANS = {
     "clojure": _clojure_plan,
     "java": _java_plan,
+    "csharp": _csharp_plan,
     "go": _go_plan,
     "typescript": _typescript_plan,
     "rust": _rust_plan,
