@@ -42,6 +42,9 @@ SKIP_LINK = frozenset(
         ".mypy_cache",
         ".clj-kondo",
         ".gradle",
+        "bin",
+        "obj",
+        "TestResults",
     }
 )
 
@@ -51,6 +54,11 @@ CONFIGS = (
     "pom.xml",
     "build.gradle",
     "build.gradle.kts",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props",
+    "global.json",
+    "NuGet.config",
     "settings.gradle",
     "go.mod",
     "go.sum",

@@ -46,6 +46,21 @@ def _typescript_private(name: str, header: str) -> bool:
     return name.startswith("#") or bool(re.search(r"\bprivate\b", header))
 
 
+_CSHARP_ATTRIBUTES = re.compile(r"^\s*\[[^\]]*\]\s*")
+_CSHARP_ACCESSORS = (".get", ".set", ".init", ".add", ".remove")
+
+
+def _csharp_private(name: str, header: str) -> bool:
+    """C# members are private unless declared otherwise. An accessor is private only when it says so."""
+
+    while _CSHARP_ATTRIBUTES.match(header):
+        header = _CSHARP_ATTRIBUTES.sub("", header, count=1)
+    signature = re.split(r"[({=]", header, maxsplit=1)[0]
+    if name.endswith(_CSHARP_ACCESSORS):
+        return bool(re.search(r"\bprivate\b", signature))
+    return re.search(r"\b(public|protected|internal)\b", signature) is None
+
+
 def is_private(language: str, name: str, source: str, start: int, end: int) -> bool:
     """True when uml-viewer should treat the operation as private."""
 
@@ -62,6 +77,8 @@ def is_private(language: str, name: str, source: str, start: int, end: int) -> b
         return re.match(r"pub\s", header) is None
     if language == "typescript":
         return _typescript_private(name, header)
+    if language == "csharp":
+        return _csharp_private(name, header)
     return False
 
 

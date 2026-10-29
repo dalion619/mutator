@@ -4,7 +4,8 @@ Clojure follows clj-mutate's symbol rules. Go follows mutate4go, including
 one-way `*` to `/`. Java follows mutate4java. TypeScript, Rust, and Python
 use the same decisions as Java, spelled in that language. TypeScript also
 mutates `??` to `||` and `?.` to `.` (removed on a call or index). JavaScript
-files use the TypeScript rules.
+files use the TypeScript rules. C# uses the Java set and drops the `?` of
+`?.`, so `a?.B` becomes `a.B`.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ _BINARY_PARENTS = {
     "boolean_operator",
 }
 
-_UNARY_PARENTS = {"unary_expression", "unary_operator", "not_operator"}
+_UNARY_PARENTS = {"unary_expression", "unary_operator", "not_operator", "prefix_unary_expression"}
 
 _BOOLEANS = {"true": "false", "false": "true", "True": "False", "False": "True"}
 
@@ -295,6 +296,11 @@ def _visit_optional(node, token: str, language: str, found: list[RawSite]) -> No
         _add(found, node, "?.", optional, "optional")
 
 
+def _visit_csharp_optional(node, token: str, language: str, found: list[RawSite]) -> None:
+    if language == "csharp" and token == "?" and _parent_type(node) == "conditional_access_expression":
+        _add(found, node, "?", "", "optional")
+
+
 def _visit_not(node, token: str, parent: str, found: list[RawSite]) -> None:
     if token in {"!", "not"} and parent in _UNARY_PARENTS | {"comparison_operator"}:
         _add(found, node, token, "", "unary")
@@ -330,6 +336,7 @@ def _visit_leaf(node, data: bytes, language: str, found: list[RawSite]) -> None:
     parent = _parent_type(node)
     _visit_binary(node, token, parent, language, found)
     _visit_optional(node, token, language, found)
+    _visit_csharp_optional(node, token, language, found)
     _visit_not(node, token, parent, found)
     _visit_negation(node, token, parent, found)
     _visit_boolean_token(node, token, found)
